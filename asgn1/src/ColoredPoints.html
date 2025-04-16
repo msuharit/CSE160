@@ -6,9 +6,15 @@
   </head>
 
   <body onload="main()">
-    <canvas id="webgl" width="400" height="400">
-    Please use a browser that supports "canvas"
-    </canvas>
+    <div style="display: flex; align-items: center;">
+      <div style="margin-right: 4px; font-size: 12px; max-width: 120px; line-height: 1.2;">
+        <button id="startMaze" style="margin-bottom: 4px;">Start Maze</button>
+        <p style="margin: 0;">Desc: Guide the cursor across without hitting the gray walls.</p>
+      </div>
+      <canvas id="webgl" width="400" height="400">
+        Please use a browser that supports "canvas"
+      </canvas>
+    </div>
     <p>
     <button type="button" id="green">Green</button>
     <button type="button" id="red">Red</button>
@@ -33,13 +39,22 @@
     <p>
       Segments <input type="range" min="4" max="60" value="10" class="slider" id="segmentSlider">
     
+    <p>My Sketch:</p>
+      <img src="sword.jpg" width="200">
+    <p>
+    <button type="button" id="loadArt">Show sketch</button>
 
     <script src="../lib/webgl-utils.js"></script>
     <script src="../lib/webgl-debug.js"></script>
     <script src="../lib/cuon-utils.js"></script>
-    <script src="Circle.js"></script>
-    <script src="Triangle.js"></script>
+
     <script src="Point.js"></script>
+    <script src="Triangle.js"></script>
+    <script src="Circle.js"></script>
+    <script src="TriangleCustom.js"></script>
+
+
+    <script src="Maze.js"></script>
     <script src="ColoredPoints.js"></script>
   </body>
 </html>

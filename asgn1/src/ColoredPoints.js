@@ -26,6 +26,8 @@ let a_Position;
 let u_FragColor;
 let u_Size;
 let g_segCount = 10;
+let gameStarted = false;
+
 
 function setUpWebGL(){
   // Retrieve <canvas> element
@@ -99,6 +101,92 @@ function addActionsForHtmlUI(){
   //size slider
   document.getElementById('sizeSlider').addEventListener('mouseup', function() {g_selectedSize = this.value})
   document.getElementById('segmentSlider').addEventListener('mouseup', function() {g_segCount = this.value});
+
+  document.getElementById('loadArt').onclick = loadArt;
+
+  document.getElementById('startMaze').onclick = () => {
+    g_shapesList = [];
+    drawMaze(); // your external maze-drawing function
+    renderAllShapes();
+    gameStarted = true;
+  };
+}
+
+function loadArt() {
+
+  const colors = [
+    [1, 1, 1, 1],  // white
+    [0.4, 0.4, 0.4, 1.0]   // gray
+  ];
+
+  let triCount = 0;
+
+  function tri(p1, p2, p3) {
+    const t = new TriangleCustom(p1, p2, p3);
+    t.color = colors[triCount % colors.length];  // alternate
+    g_shapesList.push(t);
+    triCount++;
+  }
+
+  // === TIP ===
+  tri([0, 0.9], [-0.1, 0.8], [0, 0.8]); // left right-angled triangle
+  tri([0, 0.9], [0.1, 0.8], [0, 0.8]);  // right right-angled triangle
+
+  // === SHAFT BLOCKS ===
+  const blockWidth = 0.2;
+  const blockHeight = 0.1;
+
+
+  let shaftY = 0.8;
+  for (let i = 0; i < 6; i++) {
+    const xL = -blockWidth / 2;
+    const xR = blockWidth / 2;
+    const yT = shaftY;
+  
+    let heightMult = 1;
+  
+    if (i === 0) heightMult = 3;
+    else if (i === 2) heightMult = 2;
+    else if (i === 4) heightMult = 1;
+  
+    const height = blockHeight * heightMult;
+    const yB = yT - height;
+  
+    if (i % 2 === 0) {
+      // full block
+      tri([xL, yT], [xR, yT], [xL, yB]);
+      tri([xR, yT], [xR, yB], [xL, yB]);
+    } else {
+      // thin bar
+      const thin = 0.02;
+      tri([-thin, yT], [thin, yT], [-thin, yB]);
+      tri([thin, yT], [thin, yB], [-thin, yB]);
+    }
+  
+    shaftY = yB; // stack blocks downward
+  }
+
+  // === GUARD (wide rectangle) ===
+  const guardTop = shaftY;
+  const guardBottom = guardTop - 0.1;
+  const guardL = -0.2;
+  const guardR = 0.2;
+
+  tri([guardL, guardTop], [guardR, guardTop], [guardL, guardBottom]);
+  tri([guardR, guardTop], [guardR, guardBottom], [guardL, guardBottom]);
+
+  // === HILT (large rectangle) ===
+  const hiltTop = guardBottom;
+  const hiltBottom = hiltTop - 0.2;
+  const hiltL = -0.1;
+  const hiltR = 0.1;
+
+  tri([hiltL, hiltTop], [hiltR, hiltTop], [hiltL, hiltBottom]);
+  tri([hiltR, hiltTop], [hiltR, hiltBottom], [hiltL, hiltBottom]);
+
+
+
+  renderAllShapes();
 }
 
 function main() {
@@ -114,13 +202,41 @@ function main() {
   // Register function (event handler) to be called on a mouse press
   canvas.onmousedown = click;
   // canvas.onmousemove = click;
-  canvas.onmousemove = function(ev) {if (ev.buttons == 1) (click(ev))}
+  canvas.onmousemove = function(ev) {
+    if (ev.buttons == 1) click(ev); // for drawing mode
+  
+    if (gameStarted) { // for game mode
+      const [x, y] = convertCoordEventToGL(ev);
+      
+      // Add a trail point
+      const trailDot = new Point();
+      trailDot.position = [x, y];
+      trailDot.color = [0.2, 1.0, 0.2, 1.0];  // bright green
+      trailDot.size = 6;
+      g_shapesList.push(trailDot);
+      
+      // Check collision and goal
+      if (!checkIfInsidePath(y)) {
+        alert("💥 You hit the wall! Try again.");
+        gameStarted = false;
+      } else if (x > 0.95) {
+        alert("🎉 You reached the end!");
+        gameStarted = false;
+      }
+
+      renderAllShapes();
+    }
+  };
 
   // Specify the color for clearing <canvas>
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
   // Clear <canvas>
   gl.clear(gl.COLOR_BUFFER_BIT);
+}
+
+function checkIfInsidePath(y) {
+  return y > -0.3 && y < 0.3;
 }
 
 var g_shapesList = [];
