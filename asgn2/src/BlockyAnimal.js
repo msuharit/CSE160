@@ -266,14 +266,7 @@ const footAngle  = g_isWalking ? 15 + Math.sin(phase + 1.0) * 10 : g_footAngle;
   renderLeg(right, upperAngle, midAngle, footAngle, liftY);
 });
 
-  // === FRONT LEGS ===
-  const frontZ = 0.3;
-  [.25, 1].forEach(xOffset => {
-    const m = new Matrix4(body.matrix);
-    m.translate(xOffset, legAttachY, frontZ);
-    m.rotate(-90, 0, 1, 0); // rotate to face front
-    renderLeg(m, g_upperLegAngle, g_midLegAngle, 30);
-  });
+
 
 
   let tailBody = new Cube();
