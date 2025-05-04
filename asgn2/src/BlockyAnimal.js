@@ -27,10 +27,24 @@ let gl;
 let a_Position;
 let u_FragColor;
 let u_Size;
-let g_segCount = 10;
-let gameStarted = false;
 let u_ModelMatrix;
 let u_GlobalRotateMatrix;
+let g_cameraAngleX = 0;
+let g_isTailAnimating = false;
+let g_isWalking = false;
+let g_legWalkTime = 0;
+let g_legLiftAngle = 0;
+// tentacle
+let g_isTentacleAnimating = false;
+let g_tentacleTime = 0;
+let g_tentacleAngle = 0;
+let g_tentacleExtend = 0;
+// mouse
+let g_mouseDown = false;
+let g_lastMouseX = null;
+let g_lastMouseY = null;
+
+
 
 function setUpWebGL(){
   // Retrieve <canvas> element
@@ -87,232 +101,274 @@ function connectVarToGLSL(){
     console.log('Failed to get the storage location of u_GlobalRotateMatrix');
     return;
   }
-
 }
 
-const POINT = 0;
-const TRIANGLE = 1;
-const CIRCLE = 2;
-
-
 //globals related to ui elements
-let g_selectedColor=[1.0,1.0,1.0,1.0];
-let g_selectedSize=5;
-let g_selectedType=POINT;
-let g_globalAngle;
+let g_globalAngle = 0;
+let g_upperLegAngle = 85; // was 75
+let g_midLegAngle = 45;   // was 35
+let g_footAngle = 15;     // was 30
+let g_tailAngle1 = 0;
+let g_tailAngle2 = 0;
+let g_tailAngle3 = 0;
 
 //set up actions for html ui elements
 function addActionsForHtmlUI(){
-  //buttons
-  document.getElementById('green').onclick = function() { g_selectedColor = [0.0,1.0,0.0,1.0]}
-  document.getElementById('red').onclick = function() { g_selectedColor = [1.0,0.0,0.0,1.0]}
-  document.getElementById('clearButton').onclick = function() {g_shapesList=[]; renderAllShapes(); } ;
 
-  document.getElementById('pointButton').onclick = function() {g_selectedType=POINT} ;
-  document.getElementById('triangleButton').onclick = function() {g_selectedType=TRIANGLE} ;
-  document.getElementById('circleButton').onclick = function() {g_selectedType=CIRCLE} ;
+  document.getElementById('upperLegSlider').addEventListener('input', function() {
+    g_upperLegAngle = this.value;
+    renderAllShapes();
+  });
 
-  // sliders
-  document.getElementById('redSlide').addEventListener('mouseup', function() { g_selectedColor[0] = this.value/100; })
-  document.getElementById('greenSlide').addEventListener('mouseup', function() { g_selectedColor[1] = this.value/100; })
-  document.getElementById('blueSlide').addEventListener('mouseup', function() { g_selectedColor[2] = this.value/100; })
+  document.getElementById('midLegSlider').addEventListener('input', function() {
+    g_midLegAngle = this.value;
+    renderAllShapes();
+  });
+
+  document.getElementById('footSlider').addEventListener('input', function() {
+    g_footAngle = this.value;
+    renderAllShapes();
+  });
+
+  document.getElementById('toggleTail').onclick = () => {
+    g_isTailAnimating = !g_isTailAnimating;
+  };
   
-  //size slider
-  document.getElementById('sizeSlider').addEventListener('mouseup', function() {g_selectedSize = this.value})
-  //document.getElementById('segmentSlider').addEventListener('mouseup', function() {g_segCount = this.value});
-  document.getElementById('camAngle').addEventListener('mousemove', function() {g_globalAngle = this.value, renderAllShapes() });
+  document.getElementById('toggleWalk').onclick = () => {
+    g_isWalking = !g_isWalking;
+  };
 
-  document.getElementById('loadArt').onclick = loadArt;
-}
-
-function loadArt() {
-
-  const colors = [
-    [1, 1, 1, 1],  // white
-    [0.4, 0.4, 0.4, 1.0]   // gray
-  ];
-
-  let triCount = 0;
-
-  function tri(p1, p2, p3) {
-    const t = new TriangleCustom(p1, p2, p3);
-    t.color = colors[triCount % colors.length];  // alternate
-    g_shapesList.push(t);
-    triCount++;
-  }
-
-  // === TIP ===
-  tri([0, 0.9], [-0.1, 0.8], [0, 0.8]); // left right-angled triangle
-  tri([0, 0.9], [0.1, 0.8], [0, 0.8]);  // right right-angled triangle
-
-  // === SHAFT BLOCKS ===
-  const blockWidth = 0.2;
-  const blockHeight = 0.1;
-
-
-  let shaftY = 0.8;
-  for (let i = 0; i < 6; i++) {
-    const xL = -blockWidth / 2;
-    const xR = blockWidth / 2;
-    const yT = shaftY;
-  
-    let heightMult = 1;
-  
-    if (i === 0) heightMult = 3;
-    else if (i === 2) heightMult = 2;
-    else if (i === 4) heightMult = 1;
-  
-    const height = blockHeight * heightMult;
-    const yB = yT - height;
-  
-    if (i % 2 === 0) {
-      // full block
-      tri([xL, yT], [xR, yT], [xL, yB]);
-      tri([xR, yT], [xR, yB], [xL, yB]);
-    } else {
-      // thin bar
-      const thin = 0.02;
-      tri([-thin, yT], [thin, yT], [-thin, yB]);
-      tri([thin, yT], [thin, yB], [-thin, yB]);
-    }
-  
-    shaftY = yB; // stack blocks downward
-  }
-
-  // === GUARD (wide rectangle) ===
-  const guardTop = shaftY;
-  const guardBottom = guardTop - 0.1;
-  const guardL = -0.2;
-  const guardR = 0.2;
-
-  tri([guardL, guardTop], [guardR, guardTop], [guardL, guardBottom]);
-  tri([guardR, guardTop], [guardR, guardBottom], [guardL, guardBottom]);
-
-  // === HILT (large rectangle) ===
-  const hiltTop = guardBottom;
-  const hiltBottom = hiltTop - 0.2;
-  const hiltL = -0.1;
-  const hiltR = 0.1;
-
-  tri([hiltL, hiltTop], [hiltR, hiltTop], [hiltL, hiltBottom]);
-  tri([hiltR, hiltTop], [hiltR, hiltBottom], [hiltL, hiltBottom]);
-
-
-
-  renderAllShapes();
 }
 
 function main() {
-
-  //set up canvas and gl variables
+  // Set up canvas and WebGL context
   setUpWebGL();
-  //set up GLSL shader and connect GLSL variables
+  // Set up GLSL shader and connect variables
   connectVarToGLSL();
-
-  //set up actions for html ui elements
+  // Hook up UI elements
   addActionsForHtmlUI();
-  
-  // Register function (event handler) to be called on a mouse press
-  canvas.onmousedown = click;
-  // canvas.onmousemove = click;
+
+  // === MOUSE DRAG ROTATION ===
+  canvas.onmousedown = function(ev) {
+    if (ev.shiftKey) {
+      g_isTentacleAnimating = !g_isTentacleAnimating; // toggle tentacle animation
+    } else {
+      g_mouseDown = true;
+      g_lastMouseX = ev.clientX;
+      g_lastMouseY = ev.clientY;
+    }
+  };
+
+  canvas.onmouseup = function() {
+    g_mouseDown = false;
+  };
+
   canvas.onmousemove = function(ev) {
-    if (ev.buttons == 1) click(ev); // for drawing mode
-  
-    if (gameStarted) { // for game mode
-      const [x, y] = convertCoordEventToGL(ev);
-      
-      // Add a trail point
-      const trailDot = new Point();
-      trailDot.position = [x, y];
-      trailDot.color = [0.2, 1.0, 0.2, 1.0];  // bright green
-      trailDot.size = 6;
-      g_shapesList.push(trailDot);
-      
-      // Check collision and goal
-      if (!checkIfInsidePath(y)) {
-        alert("💥 You hit the wall! Try again.");
-        gameStarted = false;
-      } else if (x > 0.95) {
-        alert("🎉 You reached the end!");
-        gameStarted = false;
-      }
+    if (g_mouseDown) {
+      const deltaX = ev.clientX - g_lastMouseX;
+      const deltaY = ev.clientY - g_lastMouseY;
+
+      g_globalAngle += deltaX * 0.5;
+      g_cameraAngleX += deltaY * 0.5;
+      g_cameraAngleX = Math.max(-90, Math.min(90, g_cameraAngleX)); // clamp X rotation
+
+      g_lastMouseX = ev.clientX;
+      g_lastMouseY = ev.clientY;
 
       renderAllShapes();
     }
   };
 
-  // Specify the color for clearing <canvas>
+  // Set background color
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-  // Clear <canvas>
-  //gl.clear(gl.COLOR_BUFFER_BIT);
-
+  // Set initial global angle from slider
+  // Initial render
   renderAllShapes();
+  tick();
 }
 
-function checkIfInsidePath(y) {
-  return y > -0.3 && y < 0.3;
+const tan = [0.82, 0.71, 0.55, 1.0]; // soft tan color
+const tanDarker = [0.65, 0.56, 0.43, 1.0];  // alternate, darker tan
+
+function renderLeg(baseMatrix, upperAngle, midAngle, footAngle, liftOffset = 0) {
+  baseMatrix.translate(0, liftOffset, 0);
+
+  const tan = [0.82, 0.71, 0.55, 1.0];
+
+  const upper = new Cube();
+  upper.color = tanDarker;
+  upper.matrix = new Matrix4(baseMatrix);
+  upper.matrix.rotate(upperAngle, 0, 0, 1);
+  upper.matrix.scale(0.2, 0.6, 0.2);
+  upper.render();
+
+  const mid = new Cube();
+  mid.color = tan;
+  mid.matrix = new Matrix4(upper.matrix);
+  mid.matrix.translate(0, 1.0, 0);
+  mid.matrix.translate(0, -0.3, 0);
+  mid.matrix.rotate(midAngle, 0, 0, 1);
+  mid.matrix.scale(1, 0.8, 1);
+  mid.render();
+
+  const foot = new Cube();
+  foot.color = tanDarker;
+  foot.matrix = new Matrix4(mid.matrix);
+  foot.matrix.translate(0, 1.0, 0);
+  foot.matrix.translate(0, -0.1, 0);
+  foot.matrix.rotate(g_footAngle, 0, 0, 1);
+  foot.matrix.scale(1, 0.7, 1);
+  foot.render();
 }
 
-var g_shapesList = [];
+function renderAllShapes() {
+  const globalRotMat = new Matrix4()
+  .rotate(g_cameraAngleX, 1, 0, 0)   // up/down tilt only
+  .rotate(g_globalAngle, 0, 1, 0);   // left/right spin
 
-/* 
-var g_points  = [];   // The array for the position of a mouse press
-var g_colors  = [];   // The array to store the color of a point
-var g_sizes   = [];   // the array to store size of each point
- */
+  gl.uniformMatrix4fv(u_GlobalRotateMatrix, false, globalRotMat.elements);
 
-function click(ev) {
-}
-
-function convertCoordEventToGL(ev){
-  var x = ev.clientX; // x coordinate of a mouse pointer
-  var y = ev.clientY; // y coordinate of a mouse pointer
-  var rect = ev.target.getBoundingClientRect();
-
-  x = ((x - rect.left) - canvas.width/2)/(canvas.width/2);
-  y = (canvas.height/2 - (y - rect.top))/(canvas.height/2);
-
-  return([x,y]);
-}
-
-// function renderAllShapes(){
-//   // Clear <canvas>
-//   gl.clear(gl.COLOR_BUFFER_BIT);
-
-//   var len = g_shapesList.length;
-
-//   for(var i = 0; i < len; i++) {
-//     g_shapesList[i].render();
-//   }
-// }
-function renderAllShapes(){
-
-  var globalRotMat = new Matrix4().rotate(g_globalAngle,0,1,0)
-  gl.uniformMatrix4fv(u_GlobalRotateMatrix,false, globalRotMat.elements)
-
+  
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  //drawTriangle3D( [-1,0,0, -0.5,-1,0, 0,0,0 ] );
-
-  // Red cube body
+  // === Body ===
   const body = new Cube();
-  body.color = [1, 0, 0, 1];
-  body.matrix.translate(-0.25, -0.5, 0.0);
-  body.matrix.scale(0.5, 1.0, 0.5);
+  body.color = tan;
+  body.matrix.translate(-0.3, -0.5, 0.0);
+  body.matrix.scale(0.6, 0.15, 0.4);
   body.render();
 
-  // Yellow left arm
-  const leftArm = new Cube();
-  leftArm.color = [1, 1, 0, 1];
+  const legAttachY = 0;
+  const legZOffsets = [0.75, 0.0, .25]; // more spaced
 
-  // Start from the body's matrix
-  leftArm.matrix = new Matrix4(body.matrix); // copy the red cube's transform
+  const walkSpeed = 0.05; // Slower than 0.1
 
-  // Move left from body, then rotate
-  leftArm.matrix.translate(1.4, 0.6, 0);    // move arm's pivot left and up
-  leftArm.matrix.rotate(45, 0, 0, 1);        // rotate 45° around z-axis
-  leftArm.matrix.scale(0.3, 0.6, 0.4);       // shape of the arm
+legZOffsets.forEach((zOffset, i) => {
+  const phase = g_legWalkTime * walkSpeed + i;
 
-  leftArm.render();
+  // Animate joint angles if walking
+// Animate joint angles if walking
+const upperAngle = g_isWalking ? 90 + Math.sin(phase) * 15 : g_upperLegAngle;
+const midAngle   = g_isWalking ? 45 + Math.sin(phase + 0.5) * 10 : g_midLegAngle;
+const footAngle  = g_isWalking ? 15 + Math.sin(phase + 1.0) * 10 : g_footAngle;
+  const liftY = g_isWalking  ? Math.max(0, -Math.sin(phase)) * 0.05 : 0;
+
+  // Left leg
+  const left = new Matrix4(body.matrix);
+  left.translate(.25, legAttachY, zOffset);
+  renderLeg(left, upperAngle, midAngle, footAngle, liftY);
+
+  // Right leg
+  const right = new Matrix4(body.matrix);
+  right.translate(0.75, legAttachY, zOffset);
+  right.scale(-1, 1, 1);
+  renderLeg(right, upperAngle, midAngle, footAngle, liftY);
+});
+
+  // === FRONT LEGS ===
+  const frontZ = 0.3;
+  [.25, 1].forEach(xOffset => {
+    const m = new Matrix4(body.matrix);
+    m.translate(xOffset, legAttachY, frontZ);
+    m.rotate(-90, 0, 1, 0); // rotate to face front
+    renderLeg(m, g_upperLegAngle, g_midLegAngle, 30);
+  });
+
+
+  let tailBody = new Cube();
+  tailBody.color = tanDarker;
+  tailBody.matrix = new Matrix4(body.matrix);
+  tailBody.matrix.translate(0.4, .75, 0.25);           // top-middle of the body
+  tailBody.matrix.scale(0.2, 0.5, 0.5);              // skinny and long
+  tailBody.render();
+
+  // === Tail Segment 1 ===
+  let tail1 = new Cube();
+  tail1.color = tan;
+  tail1.matrix = new Matrix4(body.matrix);
+  tail1.matrix.translate(0.4, .75, 0.25);           // base of tail
+  tail1.matrix.rotate(g_tailAngle1, 0, 1, 0);        // wag from base
+  tail1.matrix.translate(0, 0, 0.5);                 // extend outward
+  tail1.matrix.scale(0.2, 0.3, 0.6);
+  tail1.render();
+
+  // === Tail Segment 2 ===
+  let tail2 = new Cube();
+  tail2.color = tanDarker;
+  tail2.matrix = new Matrix4(tail1.matrix);
+  tail2.matrix.rotate(g_tailAngle2, 0, 1, 0);        // wag from new joint
+  tail2.matrix.translate(0, 0, 0.5);                 // extend again
+  tail2.matrix.scale(1, 1, 1);
+  tail2.render();
+
+  // === Tail Segment 3 ===
+  let tail3 = new Cube();
+  tail3.color = tan;
+  tail3.matrix = new Matrix4(tail2.matrix);
+  tail3.matrix.rotate(g_tailAngle3, 0, 1, 0);        // final wag
+  tail3.matrix.translate(0, 0, 0.5);
+  tail3.render();
+
+    // === Single Tentacle ===
+    const tentacle = new Cylinder();
+    tentacle.color = [0.9, 0.4, 0.5, 1.0]; // tongue pink
+  
+    // Animation: gentle wiggle + extend
+    const angle = Math.sin(g_tentacleTime * 0.05) * 10; // side wiggle
+    const length = Math.abs(Math.sin(g_tentacleTime * 0.03)) * 0.3 + 0.2; // extend/retract
+  
+    tentacle.matrix.translate(0.0, -0.4, 0.25); // base position
+    tentacle.matrix.rotate(180, 1, 0, 0);      // point downward
+    tentacle.matrix.rotate(angle, 0, 0, 1);    // wiggle
+    tentacle.matrix.scale(0.05, length, 0.05); // shape and extension
+    tentacle.render();
+}
+
+let g_tailTime = 0;
+
+function updateAnimationAngles() {
+  if (g_isTailAnimating) {
+    g_tailTime += 1;
+    g_tailAngle1 = Math.sin(g_tailTime * 0.05) * 20;
+    g_tailAngle2 = Math.sin(g_tailTime * 0.05 + 0.5) * 15;
+    g_tailAngle3 = Math.sin(g_tailTime * 0.05 + 1.0) * 10;
+  }
+
+  if (g_isWalking) {
+    g_legWalkTime += 1;
+    g_legLiftAngle = -Math.sin(g_legWalkTime * 0.1) * 20;
+  }
+  if (g_isTentacleAnimating) {
+    g_tentacleTime += 1;
+  }
+}
+
+let g_lastFrameTime = performance.now();
+let g_lastFpsUpdateTime = performance.now();
+let g_fpsSamples = [];
+
+function tick() {
+  const now = performance.now();
+  const delta = now - g_lastFrameTime;
+  g_lastFrameTime = now;
+
+  const currentFPS = 1000 / delta;
+  g_fpsSamples.push(currentFPS);
+
+  // Keep only recent 30 samples
+  if (g_fpsSamples.length > 30) {
+    g_fpsSamples.shift();
+  }
+
+  // Only update FPS display every 500ms
+  if (now - g_lastFpsUpdateTime >= 500) {
+    const avgFPS = g_fpsSamples.reduce((sum, fps) => sum + fps, 0) / g_fpsSamples.length;
+    document.getElementById('fpsCounter').innerText = `FPS: ${avgFPS.toFixed(1)}`;
+    g_lastFpsUpdateTime = now;
+  }
+
+  updateAnimationAngles();
+  renderAllShapes();
+  requestAnimationFrame(tick);
 }
