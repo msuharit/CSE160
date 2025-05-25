@@ -727,6 +727,42 @@ Vector3.prototype.normalize = function() {
    return this;
 };
 
+Vector3.prototype.sub = function(v) {
+  const e = this.elements;
+  const ve = v.elements;
+  e[0] -= ve[0];
+  e[1] -= ve[1];
+  e[2] -= ve[2];
+  return this;
+};
+
+Vector3.prototype.add = function(v) {
+  const e = this.elements;
+  const ve = v.elements;
+  e[0] += ve[0];
+  e[1] += ve[1];
+  e[2] += ve[2];
+  return this;
+};
+
+Vector3.prototype.mul = function(s) {
+  const e = this.elements;
+  e[0] *= s;
+  e[1] *= s;
+  e[2] *= s;
+  return this;
+};
+
+Vector3.cross = function(a, b) {
+  const ae = a.elements;
+  const be = b.elements;
+  return new Vector3([
+    ae[1] * be[2] - ae[2] * be[1],
+    ae[2] * be[0] - ae[0] * be[2],
+    ae[0] * be[1] - ae[1] * be[0],
+  ]);
+};
+
 /**
  * Constructor of Vector4
  * If opt_src is specified, new vector is initialized by opt_src.
