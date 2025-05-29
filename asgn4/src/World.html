@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>World</title>
+  </head>
+
+  <body onload="main()">
+    <canvas id="webgl" width="400" height="400">
+      Please use a browser that supports "canvas"
+    </canvas>
+    <p >WASD to move camera and mouse drag</p>
+    <p >Yellow cube = Generic Light</p>
+    <p >Purple cube = SpotLight</p>
+    <p >Object File is a Sword</p>
+    <p id="fpsCounter">FPS: --</p>
+
+    <p>
+      <button id="togglePointerLock">Enable Mouse Look</button>
+      <button id="toggleNormals">Toggle Normal Visualization</button>
+    </p>
+
+    <p>
+      <button id="toggleLighting">Toggle Lighting</button>
+      <label for="lightColorPicker">Light Color:</label>
+      <input type="color" id="lightColorPicker" value="#ffffff">
+
+   </p>
+
+   <p>
+      <label for="lightRadius">Circular Light Angle: <span id="lightRadiusVal">0</span></label>
+      <input type="range" id="lightRadius" min="0" max="360" value="0" step="1">
+      <button id="toggleLightAnim">Toggle Circular Light Animation</button>
+   </p>
+
+   <p>
+      <button id="toggleLightMode">Toggle Light Mode (Spotlight/Main)</button>
+
+      <label for="spotlightX">Spotlight X Position</label>
+      <input type="range" id="spotlightX" min="-10" max="10" step="0.1" value="0">
+      <span id="spotlightXVal">0</span>
+   </p>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/webgl-obj-loader@2.0.2/dist/webgl-obj-loader.min.js"></script>
+    <script src="../lib/webgl-utils.js"></script>
+    <script src="../lib/webgl-debug.js"></script>
+    <script src="../lib/cuon-utils.js"></script>
+    <script src="../lib/cuon-matrix.js"></script>
+
+    <script src="Cube.js"></script>
+    <script src="camera.js"></script>
+    <script src="Sphere.js"></script>
+    <script src="World.js"></script>
+  </body>
+</html>
