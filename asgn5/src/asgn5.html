@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<link rel="stylesheet" href="style.css">
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>My first three.js app</title>
+    <style>
+      body { margin: 0; }
+      canvas { display: block; width: 100vw; height: 100vh; }
+    </style>
+
+    <script type="importmap">
+    {
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.177.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.177.0/examples/jsm/",
+        "three/examples/jsm/loaders/GLTFLoader.js": "https://cdn.jsdelivr.net/npm/three@0.177.0/examples/jsm/loaders/GLTFLoader.js",
+        "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@0.177.0/examples/jsm/controls/OrbitControls.js"
+    }
+    }
+    </script>
+  </head>
+    <body>
+    <canvas id="c"></canvas>
+    <div id="counter" style="
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        font-size: 20px;
+        font-family: monospace;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        padding: 8px;
+        border-radius: 4px;
+    ">
+        Pull Attempts: 0
+    </div>
+    <div id="luckyCounter" style="
+        position: absolute;
+        top: 60px;
+        left: 10px;
+        font-size: 20px;
+        font-family: monospace;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        padding: 8px;
+        border-radius: 4px;
+    ">
+        LuckyPulls: 0
+    </div>
+    <div style="
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        font-size: 20px;
+        font-family: monospace;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        padding: 8px;
+        border-radius: 4px;
+    ">
+        Mouse Click to pull out the sword
+    </div>
+
+    <script type="module" src="main.js"></script>
+    </body>
+</html>
